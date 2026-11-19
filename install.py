@@ -141,8 +141,22 @@ def verify():
     return True
 
 
+def same_path():
+    """直接从 ~/.gemini/config/plugins 里运行安装脚本时，复制会把自己的目录改名搬走。"""
+    try:
+        return SOURCE == DESTINATION.resolve()
+    except OSError:
+        return False
+
+
 def install():
     node = node_version()
+    if same_path():
+        # git clone 到插件目录、或 agy plugin install 之后在这里补启用：只改 config.json，不动文件。
+        merge_sidecars(True)
+        print('node', node, '· 已经在插件目录里，跳过复制')
+        print('sidecar 已启用：', SIDECAR_ID)
+        return
     PLUGINS.mkdir(parents=True, exist_ok=True)
     backed_up = None
     with TemporaryDirectory(prefix='.ui-tweaks-install-', dir=CONFIG) as temporary:

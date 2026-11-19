@@ -23,6 +23,31 @@ python -B install.py
 
 安装会把源码包中的插件副本部署到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`，并为 `antigravity-ui-tweaks/theme` 启用 Sidecar。之后可在宿主的插件面板打开，或点击对话里的 Sidecar 链接。重装时上一版会整目录改名到 `~/.gemini/config/.ui-tweaks-backups/install-<时间戳>`，既是回滚点也保住自己改过的配方；部署失败会自动把备份改回原位。运行 `python -B install.py --uninstall` 会移除插件、Sidecar 配置项和本插件的全局审计 Hook。配方、书签和已有备份留在用户数据目录。
 
+## 从 GitHub 安装
+
+仓库地址 <https://github.com/bai-b/antigravity-ui-tweaks>。三种方式，任一即可；都需要 PATH 里的 Node.js 22.13+，装完重启一次 Antigravity。
+
+1. 有 `agy` CLI 时直接装 URL：
+
+   ```powershell
+   agy plugin install https://github.com/bai-b/antigravity-ui-tweaks
+   ```
+
+   插件会落到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`。如果侧栏没有出现，再进这个目录跑一次 `python -B install.py`：它在检测到自己就在插件目录里时跳过复制，只把 `sidecars["antigravity-ui-tweaks/theme"].enabled` 补成 `true`。
+
+2. 直接 clone 到插件目录：
+
+   ```powershell
+   git clone https://github.com/bai-b/antigravity-ui-tweaks "$env:USERPROFILE\.gemini\config\plugins\antigravity-ui-tweaks"
+   cd "$env:USERPROFILE\.gemini\config\plugins\antigravity-ui-tweaks"
+   python -B install.py
+   python -B install.py --verify
+   ```
+
+3. 下载源码 zip 解压到任意目录，在那里跑 `python -B install.py`，脚本会把 `plugin.json`、`skills/`、`sidecars/` 复制到插件目录并启用 sidecar。
+
+装完用 `python -B install.py --verify` 回读：插件目录在位、版本、sidecar 条目已启用、App 是否在运行。卸载用 `python -B install.py --uninstall`。
+
 ## 主题应用
 
 - **面板预览**可直接生成配色、检查对比度和导出 JSON。统计的是指定普通文本色对，透明色的对比根据预览背景计算。
