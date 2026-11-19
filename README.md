@@ -18,6 +18,8 @@ irm https://cdn.jsdelivr.net/gh/bai-b/antigravity-ui-tweaks@main/install.ps1 | i
 irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex
 ```
 
+镜像对刚推送的提交可能有几分钟到几小时的缓存延迟。急用时可以换成 raw 地址，或把脚本存到本地后用 `-Source` 走源码。
+
 执行策略拦下 `irm | iex` 时换成显式绕过：
 
 ```powershell
