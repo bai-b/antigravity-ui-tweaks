@@ -149,6 +149,36 @@ def same_path():
         return False
 
 
+def copy_atomic(source, target):
+    """宿主正打开着侧栏文件时，直接覆盖会被拒绝；先写同目录临时文件再替换。"""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(target.name + '.ui-tweaks-tmp')
+    try:
+        shutil.copy2(source, temporary)
+        temporary.replace(target)
+    except OSError:
+        temporary.unlink(missing_ok=True)
+        shutil.copy2(source, target)
+
+
+def update_in_place(staging, backup):
+    """目录被宿主占着改不了名时，退化成文件级覆盖，先把旧版整目录复制成备份。"""
+    BACKUPS.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copytree(DESTINATION, backup, dirs_exist_ok=True)
+    except OSError as error:
+        print('旧版备份没做完（' + str(error) + '），继续更新。')
+    for name in PAYLOAD:
+        source = staging / name
+        target = DESTINATION / name
+        if source.is_dir():
+            for item in source.rglob('*'):
+                if item.is_file():
+                    copy_atomic(item, target / item.relative_to(source))
+        else:
+            copy_atomic(source, target)
+
+
 def install():
     node = node_version()
     if same_path():
@@ -170,27 +200,41 @@ def install():
             else:
                 shutil.copy2(source, target)
         # 上一版留在配置目录里，不再放进临时目录：重装既不销毁回滚点，也不丢用户改过的配方。
+        in_place = False
         if DESTINATION.exists() or DESTINATION.is_symlink():
             BACKUPS.mkdir(parents=True, exist_ok=True)
             stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
             backed_up = BACKUPS / f'install-{stamp}'
             if backed_up.exists():
                 backed_up = BACKUPS / f'install-{stamp}-{datetime.now().strftime("%f")}'
-            DESTINATION.rename(backed_up)
-        deployed = False
-        try:
-            staging.rename(DESTINATION)
-            deployed = True
+            try:
+                DESTINATION.rename(backed_up)
+            except OSError as error:
+                # 宿主打开着插件里的 sidecars/ 与 skills/ 时，整目录改名会被拒绝（WinError 5）。
+                if getattr(error, 'winerror', None) not in (5, 32):
+                    raise
+                in_place = True
+                update_in_place(staging, backed_up)
+        if in_place:
             merge_sidecars(True)
-        except (Exception, SystemExit):
-            if deployed:
-                DESTINATION.rename(staging)
-            if backed_up is not None:
-                backed_up.rename(DESTINATION)
-            raise
-    print('node', node, '· 已安装到', DESTINATION)
-    if backed_up is not None:
-        print('上一版已备份到', backed_up)
+            print('node', node, '· 插件目录被宿主占用，已就地更新到', DESTINATION)
+            print('旧版备份在', backed_up, '（复制得到，不是整目录搬走）')
+        else:
+            deployed = False
+            try:
+                staging.rename(DESTINATION)
+                deployed = True
+                merge_sidecars(True)
+            except (Exception, SystemExit):
+                if deployed:
+                    DESTINATION.rename(staging)
+                if backed_up is not None:
+                    backed_up.rename(DESTINATION)
+                raise
+    if not in_place:
+        print('node', node, '· 已安装到', DESTINATION)
+        if backed_up is not None:
+            print('上一版已备份到', backed_up)
     print('sidecar 已启用：', SIDECAR_ID)
     if app_running():
         print('Antigravity 正在运行，安装不需要退出它：文件与配置已就位。')
