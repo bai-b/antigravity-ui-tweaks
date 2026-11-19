@@ -25,7 +25,23 @@ python -B install.py
 
 ## 从 GitHub 安装
 
-仓库地址 <https://github.com/bai-b/antigravity-ui-tweaks>。三种方式，任一即可；都需要 PATH 里的 Node.js 22.13+，装完重启一次 Antigravity。
+仓库地址 <https://github.com/bai-b/antigravity-ui-tweaks>。都需要 PATH 里的 Node.js 22.13+，装完重启一次 Antigravity。
+
+最快的一条命令，不用 clone、不用装 Python：
+
+   ```powershell
+   irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex
+   ```
+
+执行策略拦 `irm | iex` 时用这个等价写法：
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex"
+   ```
+
+`install.ps1` 自己下载源码 zip、复制 `plugin.json`/`skills/`/`sidecars/`、写 `config.json` 的 sidecar 条目，再回读一遍版本。它还认三个开关：`-Verify` 只读检查，`-Uninstall` 卸载，`-Source D:\path\to\checkout` 改用本地源码。宿主占着插件目录时同样退回文件级就地更新。脚本正文全 ASCII，因为 Windows PowerShell 5.1 会用 ANSI 代码页解码无 BOM 的脚本。
+
+下面是三种手工方式。
 
 1. 有 `agy` CLI 时直接装 URL：
 
