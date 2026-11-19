@@ -2,6 +2,35 @@
 
 在 Antigravity 辅助侧栏调主题、浏览会话和检查本机插件。打开入口是 `[界面调校台](sidecar://antigravity-ui-tweaks/theme/)`。
 
+## 安装
+
+需要 Windows 上的 Antigravity App，以及 PATH 里的 Node.js 22.13 或更新版本（会话库用 `node:sqlite`）。不需要 Python，不需要 clone，不需要先退出 Antigravity。
+
+在 PowerShell 里粘这一行：
+
+```powershell
+irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex
+```
+
+执行策略拦下 `irm | iex` 时，用这个等价写法：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex"
+```
+
+脚本会下载本仓库最新源码，把 `plugin.json`、`skills/`、`sidecars/` 复制到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`，在 `config.json` 里启用 `antigravity-ui-tweaks/theme` 这个 Sidecar，然后回读版本号并打印结果。
+
+装完要重启一次 Antigravity：Sidecar 由 App 的 `language_server` 在启动时枚举，App 侧没有热加载入口。重启后在 Customizations 的插件列表里能看到它，辅助侧栏出现「界面」标签页；也可以直接点对话里的 `[界面调校台](sidecar://antigravity-ui-tweaks/theme/)` 链接打开。
+
+| 命令 | 作用 |
+| --- | --- |
+| `irm ... | iex` | 下载最新版并安装（已是旧版时自动升级，旧目录整目录备份到 `~/.gemini/config/.ui-tweaks-backups/`） |
+| `\install.ps1 -Verify` | 只读回读：插件目录是否在位、版本、Sidecar 是否启用、App 是否在运行；没装好以非零状态退出 |
+| `\install.ps1 -Uninstall` | 移除插件目录、Sidecar 条目和本插件的全局 Hooks 订阅；配方、书签和已有备份保留 |
+| `\install.ps1 -Source D:\path\to\checkout` | 不下载，直接用本地源码安装（改代码自测用） |
+
+## 面板
+
 | 面板 | 功能 |
 | --- | --- |
 | 主题 | 自动配板、普通文本 WCAG AA 对比度、预览、JSON 配方、自定义字体和密度、目标窗口令牌探测、临时应用、恢复历史、单次渲染截图和像素差异 |
@@ -11,58 +40,40 @@
 | 任务与 Hooks | 已有 schedule 任务与下次运行估算、最近日志、受支持的手动运行、只读的工具阶段审计 |
 | REA | 查询配置的 REA MCP 服务，读会话摘要、Evidence 和书签，导入 Evidence JSON、登记待核实项与本地函数书签 |
 
-## 安装与入口
+## 安装细节
 
-需要 Windows 上的 Antigravity App 和 PATH 里的 Node.js 22.13 或更新版本（会话库用 `node:sqlite`）。`install.py` 会在部署前读取 `node --version`，版本不够直接停下并给出提示。由安装者在 Antigravity 的任务结束后安排安装和重启。
+一键脚本做的事，也可以用仓库里的 `install.py` 手工完成，两者写出的配置一致。
+
+**方式一：`install.py`（需要 Python 3）**
 
 ```powershell
 python -B install.py
+python -B install.py --verify     # 只读回读，没装好时非零退出
+python -B install.py --uninstall
 ```
 
-不必先退出 Antigravity：安装只复制文件并原子改写 `config.json`，宿主既不监听插件目录，也不会在运行中回写配置文件。但 sidecar 由 App 的 `language_server` 在启动时枚举，App 侧没有热加载入口，所以装完要重启一次 App 才会出现在 Customizations 和侧栏里。装完用 `python -B install.py --verify` 回读磁盘确认插件目录、版本、sidecar 条目是否就位；它只读不写，没有装好时以非零状态退出。
+不必先退出 Antigravity：安装只复制文件并原子改写 `config.json`，宿主既不监听插件目录，也不会在运行中回写配置文件。重装时上一版会整目录改名到 `~/.gemini/config/.ui-tweaks-backups/install-<时间戳>`，既是回滚点也保住自己改过的配方；整目录搬不动时（宿主开着 `sidecars/`、`skills/` 的句柄，Windows 报 `WinError 5`）退回文件级就地更新，先复制一份备份再逐个覆盖。
 
-安装会把源码包中的插件副本部署到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`，并为 `antigravity-ui-tweaks/theme` 启用 Sidecar。之后可在宿主的插件面板打开，或点击对话里的 Sidecar 链接。重装时上一版会整目录改名到 `~/.gemini/config/.ui-tweaks-backups/install-<时间戳>`，既是回滚点也保住自己改过的配方；部署失败会自动把备份改回原位。运行 `python -B install.py --uninstall` 会移除插件、Sidecar 配置项和本插件的全局审计 Hook。配方、书签和已有备份留在用户数据目录。
+**方式二：有 `agy` CLI 时直接装 URL**
 
-## 从 GitHub 安装
+```powershell
+agy plugin install https://github.com/bai-b/antigravity-ui-tweaks
+```
 
-仓库地址 <https://github.com/bai-b/antigravity-ui-tweaks>。都需要 PATH 里的 Node.js 22.13+，装完重启一次 Antigravity。
+插件会落到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`。如果侧栏没有出现，再进这个目录跑一次 `python -B install.py`：它在检测到自己就在插件目录里时跳过复制，只把 `sidecars["antigravity-ui-tweaks/theme"].enabled` 补成 `true`。
 
-最快的一条命令，不用 clone、不用装 Python：
+**方式三：clone 到插件目录**
 
-   ```powershell
-   irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex
-   ```
+```powershell
+git clone https://github.com/bai-b/antigravity-ui-tweaks "$env:USERPROFILE\.gemini\config\plugins\antigravity-ui-tweaks"
+cd "$env:USERPROFILE\.gemini\config\plugins\antigravity-ui-tweaks"
+python -B install.py
+python -B install.py --verify
+```
 
-执行策略拦 `irm | iex` 时用这个等价写法：
+**方式四：下载源码 zip** 解压到任意目录，在那里跑 `python -B install.py`，脚本会把 `plugin.json`、`skills/`、`sidecars/` 复制到插件目录并启用 Sidecar。
 
-   ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex"
-   ```
-
-`install.ps1` 自己下载源码 zip、复制 `plugin.json`/`skills/`/`sidecars/`、写 `config.json` 的 sidecar 条目，再回读一遍版本。它还认三个开关：`-Verify` 只读检查，`-Uninstall` 卸载，`-Source D:\path\to\checkout` 改用本地源码。宿主占着插件目录时同样退回文件级就地更新。脚本正文全 ASCII，因为 Windows PowerShell 5.1 会用 ANSI 代码页解码无 BOM 的脚本。
-
-下面是三种手工方式。
-
-1. 有 `agy` CLI 时直接装 URL：
-
-   ```powershell
-   agy plugin install https://github.com/bai-b/antigravity-ui-tweaks
-   ```
-
-   插件会落到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`。如果侧栏没有出现，再进这个目录跑一次 `python -B install.py`：它在检测到自己就在插件目录里时跳过复制，只把 `sidecars["antigravity-ui-tweaks/theme"].enabled` 补成 `true`。
-
-2. 直接 clone 到插件目录：
-
-   ```powershell
-   git clone https://github.com/bai-b/antigravity-ui-tweaks "$env:USERPROFILE\.gemini\config\plugins\antigravity-ui-tweaks"
-   cd "$env:USERPROFILE\.gemini\config\plugins\antigravity-ui-tweaks"
-   python -B install.py
-   python -B install.py --verify
-   ```
-
-3. 下载源码 zip 解压到任意目录，在那里跑 `python -B install.py`，脚本会把 `plugin.json`、`skills/`、`sidecars/` 复制到插件目录并启用 sidecar。
-
-装完用 `python -B install.py --verify` 回读：插件目录在位、版本、sidecar 条目已启用、App 是否在运行。卸载用 `python -B install.py --uninstall`。
+`install.ps1` 的正文是全 ASCII：Windows PowerShell 5.1 会用 ANSI 代码页解码没有 BOM 的脚本，写进中文会直接变成乱码并引发语法错误。中文说明只放在这份 README 里。
 
 ## 主题应用
 
@@ -91,4 +102,3 @@ node --test "tests/*.test.mjs"
 覆盖配色推导与校验边界、对比度、cron 推算（含 `CRON_TZ`）、自动化参数解析与可运行判定、启停的宿主与离线两种模式、配置写入的串行化、备份与乐观并发。测试只碰临时目录，不读写真实宿主配置。
 
 Sidecar 与 Web UI 可使用工作区的 SDK 参考版本以及隔离的配置、数据库和浏览器做验证。真实桌面端的窗口匹配、Agent 消息、文件导航、凭据刷新和 Hooks 接收以实际安装版本的验收结果为准。
-
