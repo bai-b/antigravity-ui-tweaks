@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Antigravity 调校台</title>
+<script src="/preload.js"></script>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="title-line">
+    <h1>Antigravity 调校台</h1>
+    <span class="connection" id="connection">Sidecar</span>
+  </div>
+  <nav class="navigation" aria-label="面板功能">
+    <button type="button" data-view="theme" aria-pressed="true">主题</button>
+    <button type="button" data-view="sessions" aria-pressed="false">会话</button>
+    <button type="button" data-view="mcp" aria-pressed="false">MCP</button>
+    <button type="button" data-view="rules" aria-pressed="false">规则</button>
+    <button type="button" data-view="jobs" aria-pressed="false">任务与 Hooks</button>
+    <button type="button" data-view="rea" aria-pressed="false">REA</button>
+  </nav>
+</header>
+<p class="status" id="status" role="status">正在读取调校台…</p>
+<main>
+  <section data-page="theme" aria-label="主题">
+    <section class="card">
+      <div class="section-head"><h2>生成配色</h2><button id="generate" class="primary">自动配板</button></div>
+      <div class="form-grid">
+        <label class="field">底色<input type="color" id="base" value="#f3f6fc"></label>
+        <label class="field">主色<input type="color" id="accent" value="#315eb9"></label>
+      </div>
+      <div id="preview" class="preview">
+        <div class="preview-side"><strong>项目侧栏</strong><small>当前会话</small></div>
+        <div class="preview-body"><strong>主题预览</strong><small>次要文字与时间</small><div class="preview-card">消息卡片 <span>主要操作</span></div></div>
+      </div>
+      <div id="contrast-checks" class="checks" aria-label="普通文本对比度"></div>
+      <details>
+        <summary>令牌与外观</summary>
+        <div id="palette" class="form-grid"></div>
+        <div class="form-grid">
+          <label class="field">圆角（px）<input id="radius" type="number" min="0" max="24" placeholder="宿主默认"></label>
+          <label class="field">字号（%）<input id="scale" type="number" min="75" max="150" placeholder="宿主默认"></label>
+          <label class="field">行高<input id="line-height" type="number" min="1.15" max="2" step="0.05" placeholder="宿主默认"></label>
+          <label class="field">侧栏宽度（px）<input id="sidebar-width" type="number" min="180" max="420" placeholder="宿主默认"></label>
+          <label class="field">界面字体<select id="ui-font"><option value="">宿主默认</option><option value="system">系统</option><option value="chinese">思源黑体</option><option value="mono">等宽</option></select></label>
+          <label class="field">编辑器字体<select id="editor-font"><option value="">宿主默认</option><option value="mono">等宽</option><option value="system">系统</option><option value="chinese">思源黑体</option></select></label>
+          <label class="field">内容密度<select id="density"><option value="">宿主默认</option><option value="compact">紧凑</option><option value="relaxed">宽松</option></select></label>
+          <label class="field">质感<select id="texture"><option value="">宿主默认</option><option value="flat">平铺</option><option value="glass">玻璃</option><option value="hard">硬边</option></select></label>
+          <label class="field">滚动条<select id="scrollbars"><option value="">宿主默认</option><option value="thin">细</option><option value="auto">系统宽度</option></select></label>
+        </div>
+        <fieldset class="hide-options">
+          <legend>隐藏区块（取决于窗口版本）</legend>
+          <label><input type="checkbox" data-hide="conversation-navigator"> 会话导航</label>
+          <label><input type="checkbox" data-hide="conversation-outline"> 会话大纲</label>
+          <label><input type="checkbox" data-hide="project-sidebar"> 项目侧栏</label>
+          <label><input type="checkbox" data-hide="overview-links"> 概览链接</label>
+          <label><input type="checkbox" data-hide="overview-artifacts"> 概览产物</label>
+          <label><input type="checkbox" data-hide="overview-files"> 概览文件</label>
+          <label><input type="checkbox" data-hide="overview-uploads"> 概览上传</label>
+        </fieldset>
+      </details>
+    </section>
+    <section class="card">
+      <h2>窗口预览与应用</h2>
+      <div class="actions">
+        <label class="field expand">渲染窗口<select id="targets"><option value="">选择窗口</option></select></label>
+        <button id="refresh-targets">检测窗口</button>
+      </div>
+      <p class="muted">实时应用需要桌面调试端口。应用范围是选中的窗口，关闭窗口后自动失效。</p>
+      <div class="actions">
+        <button id="apply" class="primary">应用到窗口</button><button id="clear">清除应用</button>
+        <button id="copy-css">复制 CSS</button><button id="probe">探测令牌</button>
+      </div>
+      <div class="actions">
+        <label class="field expand">应用历史<select id="history"><option value="">暂无记录</option></select></label>
+        <button id="restore">恢复所选</button>
+      </div>
+      <details id="token-details">
+        <summary>令牌浏览</summary>
+        <div class="form-grid">
+          <label class="field">搜索令牌、颜色或来源<input id="filter-tokens" type="search"></label>
+          <label class="field">用途<select id="token-group"><option value="">全部</option><option>背景与边界</option><option>文字</option><option>强调与状态</option><option>其他</option></select></label>
+          <label class="check"><input id="only-colors" type="checkbox" checked> 仅可吸取的颜色</label>
+        </div>
+        <p id="probe-info" class="muted">先检测目标窗口并运行探针。</p>
+        <div id="token-results"></div>
+      </details>
+      <details>
+        <summary>改前改后对比</summary>
+        <p class="muted">点击时只截取选中窗口的渲染画面。两次截图请保持窗口尺寸一致，结果保留在当前面板内。</p>
+        <div class="actions"><button id="capture-before">截取改前</button><button id="capture-after">截取改后</button><button id="clear-images">清除图像</button></div>
+        <div id="images" class="image-grid"></div>
+      </details>
+    </section>
+    <section class="card">
+      <h2>主题配方</h2>
+      <div class="form-grid">
+        <label class="field">配方名称<input id="pack-name" maxlength="60" placeholder="例如 日间办公"></label>
+        <label class="field">已保存配方<select id="packs"><option value="">选择配方</option></select></label>
+      </div>
+      <div class="actions">
+        <button id="save-pack" class="primary">保存配方</button><button id="load-pack">载入预览</button>
+        <button id="export-pack">导出 JSON</button><button id="import-pack">导入 JSON</button>
+        <input id="pack-file" type="file" accept=".json,application/json" hidden>
+      </div>
+      <details>
+        <summary>工作区和切换计划</summary>
+        <p class="muted" id="workspace-label">正在等待宿主工作区。</p>
+        <div class="actions">
+          <button id="bind-pack">将所选配方绑定到工作区</button><button id="unbind-pack">解除绑定</button>
+        </div>
+        <div class="form-grid">
+          <label class="field">切换方式<select id="schedule-mode"><option value="off">关闭</option><option value="system">跟随系统</option><option value="clock">按本机时间</option></select></label>
+          <label class="field">日间配方<select id="schedule-day"></select></label>
+          <label class="field">夜间配方<select id="schedule-night"></select></label>
+          <label class="field">日间开始<input type="time" id="day-at" value="07:00"></label>
+          <label class="field">夜间开始<input type="time" id="night-at" value="20:00"></label>
+        </div>
+        <div class="actions">
+          <button id="save-schedule">保存计划</button>
+          <label class="check"><input id="auto-apply" type="checkbox"> 面板打开时自动应用到匹配会话的窗口</label>
+        </div>
+      </details>
+      <details>
+        <summary>写入宿主主题配置</summary>
+        <p class="muted">保存当前预览的底色、前景和主色种子。Antigravity 下次启动时读取。</p>
+        <div class="actions">
+          <label class="field">主题模式<select id="theme-mode"><option value="">保留当前模式</option><option value="THEME_MODE_LIGHT">浅色</option><option value="THEME_MODE_DARK">深色</option><option value="THEME_MODE_SYSTEM">跟随系统</option></select></label>
+          <label class="field">写入配方种子<select id="seed-target"><option value="light">浅色</option><option value="dark">深色</option></select></label>
+          <button id="save-host">写入宿主配置</button>
+        </div>
+      </details>
+    </section>
+    <section class="card">
+      <h2>让 Agent 调主题</h2>
+      <label class="field">调整要求<textarea id="theme-request" rows="2" placeholder="例如 保留蓝色主色，提高次要文字对比度"></textarea></label>
+      <p class="muted">发送当前配方和调整要求，Agent 返回的 JSON 可导入预览。</p>
+      <div class="actions"><button id="request-theme">发到当前会话</button><button id="new-theme">新建调校会话</button></div>
+    </section>
+  </section>
+
+  <section data-page="sessions" aria-label="会话" hidden>
+    <section class="card">
+      <div class="section-head"><h2>本机会话</h2><button id="load-sessions">刷新</button></div>
+      <div class="form-grid">
+        <label class="field">搜索标题或工作区<input id="session-search" type="search"></label>
+        <label class="field">项目<select id="session-project"><option value="">全部</option></select></label>
+      </div>
+      <label class="field">会话<select id="sessions"><option value="">选择会话</option></select></label>
+      <div class="actions"><button id="jump-session">在宿主打开</button><button id="view-session">加载时间线</button><button id="export-session">导出 Markdown</button></div>
+      <p id="session-summary" class="muted"></p>
+      <div id="session-timeline" class="list"></div>
+    </section>
+    <section class="card">
+      <h2>打开文件与评论</h2>
+      <label class="field">文件 URI<input id="file-uri" placeholder="file:///D:/work/report.md"></label>
+      <label class="field">评论<textarea id="artifact-comment" rows="2"></textarea></label>
+      <div class="actions"><button id="open-file">打开文件</button><button id="add-comment">附到下一条消息</button></div>
+    </section>
+  </section>
+
+  <section data-page="mcp" aria-label="MCP 体检" hidden>
+    <section class="card">
+      <div class="section-head"><h2>MCP 体检</h2><button id="load-mcp">读取配置</button></div>
+      <p class="muted">探测按所选配置启动独立的 stdio 进程或连接 HTTP 服务。结果不显示配置中的密钥。</p>
+      <div id="mcp-table"></div>
+      <label class="field">服务器<select id="mcp-select"><option value="">选择服务器</option></select></label>
+      <div class="actions"><button id="probe-mcp" class="primary">测试服务及工具</button><button id="refresh-credential">请求宿主刷新凭据</button></div>
+      <pre id="mcp-result" hidden></pre>
+    </section>
+    <section class="card">
+      <div class="section-head"><h2>本机健康状态</h2><button id="get-health">检查</button></div>
+      <dl id="health-details" class="list"></dl>
+      <div class="actions"><label class="field">本机端口<input id="local-port" type="number" min="1" max="65535"></label><button id="check-port">检查端口占用</button></div>
+      <p id="port-result" class="muted"></p>
+    </section>
+  </section>
+
+  <section data-page="rules" aria-label="技能和规则" hidden>
+    <section class="card">
+      <div class="section-head"><h2>技能和规则</h2><button id="load-rules">刷新</button></div>
+      <label class="field">筛选名称、来源或类型<input id="filter-rules" type="search"></label>
+      <div id="rules-list" class="list"></div>
+    </section>
+    <section class="card">
+      <h2>工作区 AGENTS.md 片段</h2>
+      <label class="field">目标工作区<select id="rule-workspace"><option value="">选择工作区</option></select></label>
+      <label class="field">由调校台管理的片段<textarea id="agents-content" rows="5"></textarea></label>
+      <div class="actions"><button id="load-fragment">读取片段</button><button id="save-fragment" class="primary">保存片段</button><button id="remove-fragment">移除片段</button></div>
+    </section>
+  </section>
+
+  <section data-page="jobs" aria-label="任务与 Hooks" hidden>
+    <section class="card">
+      <div class="section-head"><h2>计划任务</h2><button id="load-jobs">刷新</button></div>
+      <div id="jobs-table"></div>
+      <label class="field">任务<select id="job-select"><option value="">选择任务</option></select></label>
+      <div class="actions"><button id="job-log">最近日志</button><button id="run-job">现在运行</button></div>
+      <pre id="job-result" hidden></pre>
+    </section>
+    <section class="card">
+      <div class="section-head"><h2>Hooks 审计</h2><button id="load-hooks">刷新</button></div>
+      <p class="muted">记录工具名、阶段、时间和宿主提供的结果。只看到调用前事件时，状态记为未知。</p>
+      <div class="actions"><label class="check"><input id="audit-enabled" type="checkbox"> 记录后续工具事件</label><button id="save-audit">保存审计设置</button></div>
+      <div id="hook-groups" class="list"></div>
+      <div id="hook-table"></div>
+    </section>
+  </section>
+
+  <section data-page="rea" aria-label="REA 工作台" hidden>
+    <section class="card">
+      <div class="section-head"><h2>REA 会话与证据</h2><button id="load-rea">读取连接</button></div>
+      <label class="field">REA 连接<select id="rea-select"><option value="">选择连接</option></select></label>
+      <p class="muted">独立 stdio 探测可能读不到 Antigravity 已打开的分析会话。可以导入从原会话导出的 Evidence JSON。</p>
+      <div class="actions">
+        <button id="read-rea" class="primary">查询会话、证据和书签</button><button id="import-evidence">导入 Evidence</button>
+        <input id="evidence-file" type="file" accept=".json,application/json" hidden>
+      </div>
+      <div id="rea-results" class="list"></div>
+    </section>
+    <section class="card">
+      <h2>待核实与函数书签</h2>
+      <label class="field">地址或问题<input id="rea-note" maxlength="300" placeholder="例如 0x401200 或 核实配置解析入口"></label>
+      <label class="field">类型<select id="rea-note-type"><option value="待核实">待核实</option><option value="函数书签">函数书签</option></select></label>
+      <div class="actions"><button id="save-rea-note">添加本地记录</button></div>
+      <div id="rea-notes" class="list"></div>
+    </section>
+  </section>
+</main>
+<dialog id="confirm-dialog" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading">确认操作</h2>
+  <p id="confirm-message"></p>
+  <form method="dialog" class="actions">
+    <button value="cancel" autofocus>取消</button>
+    <button value="ok" class="primary">继续</button>
+  </form>
+</dialog>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

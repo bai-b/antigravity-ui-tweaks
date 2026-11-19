@@ -1,0 +1,23 @@
+{
+  "command": "node",
+  "args": [
+    "main.mjs"
+  ],
+  "restart_policy": "on-failure",
+  "display_name": "界面调校台",
+  "description": "在辅助侧栏预览主题、浏览会话，诊断 MCP、规则、自动化、Hooks 和 REA。",
+  "has_web_ui": true,
+  "agent_permissions": {
+    "allows_user_interactions": false
+  },
+  "ui_config": {
+    "display_name": "界面调校台",
+    "views": [
+      {
+        "path": "/",
+        "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE",
+        "title": "界面"
+      }
+    ]
+  }
+}
