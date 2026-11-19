@@ -24,7 +24,11 @@ $ErrorActionPreference = 'Stop'
 $PluginId  = 'antigravity-ui-tweaks'
 $SidecarId = 'antigravity-ui-tweaks/theme'
 $AuditKey  = 'antigravity-ui-tweaks-audit'
-$RepoZip   = 'https://codeload.github.com/bai-b/antigravity-ui-tweaks/zip/refs/heads/main'
+$RepoZip   = @(
+    'https://codeload.github.com/bai-b/antigravity-ui-tweaks/zip/refs/heads/main',
+    'https://api.github.com/repos/bai-b/antigravity-ui-tweaks/zipball/main',
+    'https://cdn.jsdelivr.net/gh/bai-b/antigravity-ui-tweaks@main/plugin.json'
+)
 $ConfigDir = Join-Path $env:USERPROFILE '.gemini\config'
 $Plugins   = Join-Path $ConfigDir 'plugins'
 $Dest      = Join-Path $Plugins $PluginId
@@ -128,8 +132,20 @@ function Get-Package {
     $work = Join-Path ([IO.Path]::GetTempPath()) ("agy-ui-tweaks-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
     New-Item -ItemType Directory -Force -Path $work | Out-Null
     $zip = Join-Path $work 'plugin.zip'
-    Write-Host 'downloading the latest source...'
-    Invoke-WebRequest -Uri $RepoZip -OutFile $zip -UseBasicParsing
+    $fetched = $false
+    foreach ($url in $RepoZip) {
+        if ($url -like '*plugin.json') { continue }
+        Write-Host ('downloading the latest source from ' + $url)
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing -TimeoutSec 120
+            if ((Get-Item -LiteralPath $zip).Length -gt 1024) { $fetched = $true; break }
+        } catch {
+            Write-Host ('  failed: ' + $_.Exception.Message)
+        }
+    }
+    if (-not $fetched) {
+        throw 'could not download the source archive; check the network or pass -Source with a local checkout.'
+    }
     Expand-Archive -LiteralPath $zip -DestinationPath $work -Force
     $root = Get-ChildItem -LiteralPath $work -Directory | Select-Object -First 1
     if (-not $root) { throw 'the downloaded archive had no top-level directory.' }

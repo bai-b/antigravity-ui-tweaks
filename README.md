@@ -9,25 +9,45 @@
 在 PowerShell 里粘这一行：
 
 ```powershell
+irm https://cdn.jsdelivr.net/gh/bai-b/antigravity-ui-tweaks@main/install.ps1 | iex
+```
+
+走 jsDelivr 镜像而不是 `raw.githubusercontent.com`：后者在部分网络（含本机实测）会直接超时。脚本自己下载源码包时也会依次试 `codeload.github.com` 和 `api.github.com`，两个都不通才会停下并提示。GitHub raw 可用的网络可以直接用这个等价地址：
+
+```powershell
 irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex
 ```
 
-执行策略拦下 `irm | iex` 时，用这个等价写法：
+执行策略拦下 `irm | iex` 时换成显式绕过：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/bai-b/antigravity-ui-tweaks/main/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://cdn.jsdelivr.net/gh/bai-b/antigravity-ui-tweaks@main/install.ps1 | iex"
 ```
 
 脚本会下载本仓库最新源码，把 `plugin.json`、`skills/`、`sidecars/` 复制到 `%USERPROFILE%\.gemini\config\plugins\antigravity-ui-tweaks`，在 `config.json` 里启用 `antigravity-ui-tweaks/theme` 这个 Sidecar，然后回读版本号并打印结果。
 
 装完要重启一次 Antigravity：Sidecar 由 App 的 `language_server` 在启动时枚举，App 侧没有热加载入口。重启后在 Customizations 的插件列表里能看到它，辅助侧栏出现「界面」标签页；也可以直接点对话里的 `[界面调校台](sidecar://antigravity-ui-tweaks/theme/)` 链接打开。
 
-| 命令 | 作用 |
+### 参数开关
+
+一行命令走的是默认安装。要检查、卸载或改用本地源码，先把脚本存到本地再带参数运行：
+
+```powershell
+$p = "$env:TEMP\antigravity-ui-tweaks.ps1"
+irm https://cdn.jsdelivr.net/gh/bai-b/antigravity-ui-tweaks@main/install.ps1 -OutFile $p
+
+& $p                          # 安装或升级
+& $p -Verify                  # 只读回读，没装好时非零退出
+& $p -Uninstall               # 卸载
+& $p -Source D:\path\to\checkout   # 用本地源码安装
+```
+
+| 参数 | 作用 |
 | --- | --- |
-| `irm ... | iex` | 下载最新版并安装（已是旧版时自动升级，旧目录整目录备份到 `~/.gemini/config/.ui-tweaks-backups/`） |
-| `\install.ps1 -Verify` | 只读回读：插件目录是否在位、版本、Sidecar 是否启用、App 是否在运行；没装好以非零状态退出 |
-| `\install.ps1 -Uninstall` | 移除插件目录、Sidecar 条目和本插件的全局 Hooks 订阅；配方、书签和已有备份保留 |
-| `\install.ps1 -Source D:\path\to\checkout` | 不下载，直接用本地源码安装（改代码自测用） |
+| 无 | 下载最新版并安装；已是旧版时整目录备份到 `~/.gemini/config/.ui-tweaks-backups/` 后升级 |
+| `-Verify` | 插件目录是否在位、版本、Sidecar 是否启用、App 是否在运行；不写入任何文件 |
+| `-Uninstall` | 移除插件目录、Sidecar 条目和本插件的全局 Hooks 订阅；配方、书签和已有备份保留 |
+| `-Source <path>` | 不下载，直接用本地 checkout 安装（改代码自测用） |
 
 ## 面板
 
