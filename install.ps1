@@ -18,6 +18,13 @@ param(
     [string]$Source
 )
 
+# Running from an extracted release package: use the files next to this script
+# instead of downloading, so the zip works offline.
+if (-not $Source -and $PSScriptRoot) {
+    $localManifest = Join-Path $PSScriptRoot 'plugin.json'
+    if (Test-Path -LiteralPath $localManifest) { $Source = $PSScriptRoot }
+}
+
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 

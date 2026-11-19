@@ -2,7 +2,7 @@
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "antigravity-ui-tweaks",
   "displayName": "Antigravity 界面调校台",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "在一个侧栏面板里调校界面、浏览会话、管理规则并诊断 MCP、自动化与 Hooks。",
   "author": {
     "name": "YG"

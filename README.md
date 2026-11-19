@@ -51,6 +51,18 @@ irm https://cdn.jsdelivr.net/gh/bai-b/antigravity-ui-tweaks@main/install.ps1 -Ou
 | `-Uninstall` | 移除插件目录、Sidecar 条目和本插件的全局 Hooks 订阅；配方、书签和已有备份保留 |
 | `-Source <path>` | 不下载，直接用本地 checkout 安装（改代码自测用） |
 
+### 下载发布包（离线安装）
+
+不想碰命令行时用发布包：从 [Releases](https://github.com/bai-b/antigravity-ui-tweaks/releases/latest) 下载 `antigravity-ui-tweaks-<版本>.zip`，解压到任意目录，**双击其中的 `install.cmd`**。
+
+包里的脚本检测到自己和 `plugin.json` 在同一目录时就用本地文件，不再联网下载，所以完全离线也能装。`install.cmd` 只是替你把 `install.ps1` 用 `-ExecutionPolicy Bypass` 跑起来，装完窗口会停住显示结果；不想双击也可以在该目录执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Verify
+```
+
+发布包由仓库里的 `build.py` 生成（`python -B build.py`），产物在 `dist/`，同时写出 `.zip.sha256` 校验文件。
 ## 面板
 
 | 面板 | 功能 |
