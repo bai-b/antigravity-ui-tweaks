@@ -41,6 +41,31 @@ def node_version():
     return (result.stdout or '').strip()
 
 
+def pin_node(root):
+    """宿主在 Windows 上按裸名字启动 sidecar 会失败（日志里是 't' is not recognized），
+    所以把 node 的绝对路径写进 sidecar.json。"""
+    manifest = Path(root) / 'sidecars' / 'theme' / 'sidecar.json'
+    executable = shutil.which('node')
+    if not manifest.exists() or not executable:
+        return None
+    executable = str(Path(executable).resolve())
+    try:
+        data = json.loads(manifest.read_text(encoding='utf-8-sig'))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get('command') == executable:
+        return executable
+    data['command'] = executable
+    copy_atomic_text(manifest, json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+    return executable
+
+
+def copy_atomic_text(path, text):
+    temporary = path.with_name(path.name + '.ui-tweaks-tmp')
+    temporary.write_text(text, encoding='utf-8')
+    temporary.replace(path)
+
+
 def update_config(path, change):
     CONFIG.mkdir(parents=True, exist_ok=True)
     for _ in range(3):
@@ -124,10 +149,18 @@ def verify():
         problems.append('config.json 读不出来')
     if entry.get('enabled') is not True:
         problems.append('config.json 里 sidecar 没有启用')
+    command = None
+    try:
+        command = json.loads((DESTINATION / 'sidecars' / 'theme' / 'sidecar.json').read_text(encoding='utf-8-sig')).get('command')
+    except (OSError, ValueError, AttributeError):
+        problems.append('sidecars/theme/sidecar.json 读不出来')
+    if command and not os.path.isabs(command):
+        problems.append('sidecar 用裸名字启动（' + str(command) + '），宿主在 Windows 上解析不到；重跑安装脚本会写成绝对路径')
     running = app_running()
     print('插件目录', DESTINATION, '·', '在位' if version else '缺失')
     print('版本', version or '未知')
     print('sidecar 条目', SIDECAR_ID, '·', '已启用' if entry.get('enabled') is True else '未启用')
+    print('sidecar 命令', command or '未知', '·', '绝对路径' if command and os.path.isabs(command) else '裸名字（宿主解析不到）')
     print('Antigravity', '正在运行' if running else '未运行' if running is False else '状态未知')
     if problems:
         for problem in problems:
@@ -183,6 +216,7 @@ def install():
     node = node_version()
     if same_path():
         # git clone 到插件目录、或 agy plugin install 之后在这里补启用：只改 config.json，不动文件。
+        pin_node(DESTINATION)
         merge_sidecars(True)
         print('node', node, '· 已经在插件目录里，跳过复制')
         print('sidecar 已启用：', SIDECAR_ID)
@@ -201,6 +235,7 @@ def install():
                 shutil.copy2(source, target)
         # 上一版留在配置目录里，不再放进临时目录：重装既不销毁回滚点，也不丢用户改过的配方。
         in_place = False
+        pin_node(staging)
         if DESTINATION.exists() or DESTINATION.is_symlink():
             BACKUPS.mkdir(parents=True, exist_ok=True)
             stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -215,6 +250,7 @@ def install():
                     raise
                 in_place = True
                 update_in_place(staging, backed_up)
+                pin_node(DESTINATION)
         if in_place:
             merge_sidecars(True)
             print('node', node, '· 插件目录被宿主占用，已就地更新到', DESTINATION)

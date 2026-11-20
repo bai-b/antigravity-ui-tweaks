@@ -125,6 +125,46 @@ function Set-SidecarEnabled([bool]$enabled) {
     else { Write-Host ("sidecar entry removed: {0}" -f $SidecarId) }
 }
 
+
+$NodeHelper = @'
+const fs = require('fs');
+const target = process.env.AGY_SIDECAR;
+const nodeExe = process.env.AGY_NODE;
+let data = {};
+try {
+  data = JSON.parse(fs.readFileSync(target, 'utf8').replace(/^\uFEFF/, '')) || {};
+} catch (error) {
+  if (fs.existsSync(target)) throw error;
+}
+if (data.command !== nodeExe) {
+  data.command = nodeExe;
+  const temporary = target + '.ui-tweaks-tmp';
+  fs.writeFileSync(temporary, JSON.stringify(data, null, 2) + '\n');
+  fs.renameSync(temporary, target);
+}
+'@
+
+function Set-NodeCommand([string]$root) {
+    # The host launches sidecars by bare name on Windows and fails; pin the absolute node path.
+    $manifest = Join-Path $root 'sidecars\theme\sidecar.json'
+    if (-not (Test-Path -LiteralPath $manifest)) { return $null }
+    $nodeExe = $null
+    try { $nodeExe = (Get-Command node -ErrorAction Stop).Source } catch { return $null }
+    if (-not $nodeExe) { return $null }
+    $helper = Join-Path ([IO.Path]::GetTempPath()) ("agy-ui-tweaks-node-" + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.cjs')
+    [IO.File]::WriteAllText($helper, $NodeHelper, (New-Object Text.UTF8Encoding($false)))
+    try {
+        $env:AGY_SIDECAR = $manifest
+        $env:AGY_NODE = $nodeExe
+        & node $helper
+        if ($LASTEXITCODE -ne 0) { throw "pinning the node path failed (node exit code $LASTEXITCODE)." }
+    } finally {
+        Remove-Item -LiteralPath $helper -Force -ErrorAction SilentlyContinue
+        Remove-Item Env:\AGY_SIDECAR, Env:\AGY_NODE -ErrorAction SilentlyContinue
+    }
+    return $nodeExe
+}
+
 function Get-Package {
     if ($Source) {
         $root = (Resolve-Path -LiteralPath $Source).Path
@@ -203,6 +243,8 @@ function Install-Plugin {
                 Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
             }
             Set-SidecarEnabled $true
+            $pinned = Set-NodeCommand $Dest
+            if ($pinned) { Write-Host ("sidecar launches with {0}" -f $pinned) }
             Write-Host ("previous version copied to {0}" -f $backup)
             Show-Result
             return
@@ -211,6 +253,8 @@ function Install-Plugin {
     try {
         Copy-Payload $root $Dest
         Set-SidecarEnabled $true
+        $pinned = Set-NodeCommand $Dest
+        if ($pinned) { Write-Host ("sidecar launches with {0}" -f $pinned) }
     } catch {
         if ($backup -and (Test-Path $backup)) {
             if (Test-Path $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
@@ -258,10 +302,19 @@ function Test-Install {
             }
         } catch { $problems += 'config.json is not readable' }
     } else { $problems += 'config.json is missing' }
+    $command = $null
+    $sidecarManifest = Join-Path $Dest 'sidecars\theme\sidecar.json'
+    if (Test-Path -LiteralPath $sidecarManifest) {
+        try { $command = (Get-Content -LiteralPath $sidecarManifest -Raw -Encoding UTF8 | ConvertFrom-Json).command } catch { }
+    } else { $problems += 'sidecars/theme/sidecar.json is missing' }
+    if ($command -and -not [IO.Path]::IsPathRooted($command)) {
+        $problems += "sidecar command is the bare name '$command'; the host cannot resolve it on Windows - rerun install.ps1 to pin the absolute path"
+    }
     $label = $(if ($version) { 'present' } else { 'missing' })
     Write-Host ("plugin directory {0} | {1}" -f $Dest, $label)
     Write-Host ("version {0}" -f $(if ($version) { $version } else { 'unknown' }))
     Write-Host ("sidecar entry {0} | {1}" -f $SidecarId, $(if ($enabled) { 'enabled' } else { 'not enabled' }))
+    Write-Host ("sidecar command {0}" -f $(if ($command) { $command } else { 'unknown' }))
     $running = [bool](Get-Process -Name 'Antigravity' -ErrorAction SilentlyContinue)
     Write-Host ("Antigravity {0}" -f $(if ($running) { 'is running' } else { 'is not running' }))
     if ($problems.Count -gt 0) {

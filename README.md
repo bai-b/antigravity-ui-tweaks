@@ -86,7 +86,9 @@ python -B install.py --verify     # 只读回读，没装好时非零退出
 python -B install.py --uninstall
 ```
 
-不必先退出 Antigravity：安装只复制文件并原子改写 `config.json`，宿主既不监听插件目录，也不会在运行中回写配置文件。重装时上一版会整目录改名到 `~/.gemini/config/.ui-tweaks-backups/install-<时间戳>`，既是回滚点也保住自己改过的配方；整目录搬不动时（宿主开着 `sidecars/`、`skills/` 的句柄，Windows 报 `WinError 5`）退回文件级就地更新，先复制一份备份再逐个覆盖。
+不必先退出 Antigravity：安装只复制文件并原子改写 `config.json`、`sidecar.json`，宿主既不监听插件目录，也不会在运行中回写配置文件。重装时上一版会整目录改名到 `~/.gemini/config/.ui-tweaks-backups/install-<时间戳>`，既是回滚点也保住自己改过的配方；整目录搬不动时（宿主开着 `sidecars/`、`skills/` 的句柄，Windows 报 `WinError 5`）退回文件级就地更新，先复制一份备份再逐个覆盖。
+
+两个安装脚本还会把 `sidecars/theme/sidecar.json` 的 `command` 从裸名字 `node` 改成本机 `node.exe` 的绝对路径：Windows 上宿主按裸名字启动 Sidecar 会失败（见“诊断口径”第一条）。`-Verify` / `--verify` 会回读这一项，仍是裸名字时直接报成问题。
 
 **方式二：有 `agy` CLI 时直接装 URL**
 
@@ -120,6 +122,7 @@ python -B install.py --verify
 
 ## 诊断口径
 
+- Sidecar 由宿主按 `sidecar.json` 的 `command` 启动。Windows 上宿主解析裸命令名 `node` 会失败，`~/.gemini/antigravity/sidecar_data/<插件>/<sidecar>/logs/sidecar.log` 里只有一行启动提示紧跟 `'t' is not recognized as an internal or external command`，侧栏也就没有面板；宿主自带的 `swarm` 插件报同一个错，属于宿主的启动方式。两个安装脚本都把该字段改写成 `node` 的绝对路径（需要 Node 22.13 以上，启动仍由宿主完成）。
 - 会话使用本地 SQLite 索引和会话日志，缺日志时尝试读搜索索引片段。导出会标记来源和截断。Token 使用日志已经记录的字段，缓存读取是单列。
 - MCP 探测使用配置启动独立 stdio 进程或连接 HTTP 端点。已有进程的会话状态可能和探测进程不同。宿主管理的 OAuth 凭据由宿主刷新。界面显示经过整理的连接和状态字段，探测不输出配置中的密钥。
 - 插件与内置组件只在面板里列出，启停一律交给宿主的 Customizations 开关，调校台不改它们的文件。独立规则与 Skill 默认同样跟随宿主；确认「离线停用」才把文件改名成 `*.ui-tweaks-disabled`，此时宿主面板可能仍显示为已启用，面板与返回值都会标注。注入 AGENTS.md 时只更新带有调校台标记的片段，并备份原文。
