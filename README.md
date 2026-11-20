@@ -123,6 +123,7 @@ python -B install.py --verify
 ## 诊断口径
 
 - Sidecar 由宿主按 `sidecar.json` 的 `command` 启动。Windows 上宿主解析裸命令名 `node` 会失败，`~/.gemini/antigravity/sidecar_data/<插件>/<sidecar>/logs/sidecar.log` 里只有一行启动提示紧跟 `'t' is not recognized as an internal or external command`，侧栏也就没有面板；宿主自带的 `swarm` 插件报同一个错，属于宿主的启动方式。两个安装脚本都把该字段改写成 `node` 的绝对路径（需要 Node 22.13 以上，启动仍由宿主完成）。
+- 面板页只发一次 HTML 请求：样式内联在页面里，脚本由 `palette.mjs`、`panel-tools.mjs`、`app.js` 去掉模块语法拼成一个经典脚本 `/bundle.js`。宿主的 `plugin://` 代理会以 401 拒掉 iframe 里的 module 子资源请求（页面停在「正在读取调校台…」，网络面板里只有一条 `401 GET plugin://…/app.js`），经典脚本与 `/preload.js` 同一路径放行。三个 `.mjs` 源文件仍在，测试直接 import 它们。Sidecar 还注册了 `unhandledRejection`/`uncaughtException` 处理，避免一次异步异常让宿主按退出码反复退避重启、带出新的端口和 token。
 - 会话使用本地 SQLite 索引和会话日志，缺日志时尝试读搜索索引片段。导出会标记来源和截断。Token 使用日志已经记录的字段，缓存读取是单列。
 - MCP 探测使用配置启动独立 stdio 进程或连接 HTTP 端点。已有进程的会话状态可能和探测进程不同。宿主管理的 OAuth 凭据由宿主刷新。界面显示经过整理的连接和状态字段，探测不输出配置中的密钥。
 - 插件与内置组件只在面板里列出，启停一律交给宿主的 Customizations 开关，调校台不改它们的文件。独立规则与 Skill 默认同样跟随宿主；确认「离线停用」才把文件改名成 `*.ui-tweaks-disabled`，此时宿主面板可能仍显示为已启用，面板与返回值都会标注。注入 AGENTS.md 时只更新带有调校台标记的片段，并备份原文。

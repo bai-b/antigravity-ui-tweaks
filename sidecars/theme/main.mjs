@@ -15,6 +15,14 @@ import {
 
 if (!process.env.ANTIGRAVITY_SIDECAR_UI_TOKEN) throw new Error('缺少 Antigravity Sidecar UI token。');
 
+// 宿主按退出码做退避重启：一次漏接的异步异常就让整个面板掉线，这里只记录不退出。
+process.on('unhandledRejection', (error) => {
+  console.error('[sidecar] unhandled rejection:', error && error.stack ? error.stack : error);
+});
+process.on('uncaughtException', (error) => {
+  console.error('[sidecar] uncaught exception:', error && error.stack ? error.stack : error);
+});
+
 const here = dirname(fileURLToPath(import.meta.url));
 const optionsPath = join(privateDir, 'options.json');
 const app = new SidecarApp();
@@ -23,8 +31,13 @@ const applying = new Map();
 const themeKeys = { light: 'customThemeSeedsLight', dark: 'customThemeSeedsDark' };
 const themeModes = ['THEME_MODE_LIGHT', 'THEME_MODE_DARK', 'THEME_MODE_SYSTEM'];
 
+const assetHeaders = {
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+};
+
 for (const [path, file, type] of [
-  ['/', 'index.html', 'text/html'],
   ['/styles.css', 'styles.css', 'text/css'],
   ['/app.js', 'app.js', 'application/javascript'],
   ['/panel-tools.mjs', 'panel-tools.mjs', 'application/javascript'],
@@ -32,9 +45,48 @@ for (const [path, file, type] of [
 ]) {
   app.page(path, async () => new Response(await readFile(join(here, file), 'utf8'), {
     contentType: type + '; charset=utf-8',
-    headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' },
+    headers: assetHeaders,
   }));
 }
+
+// 宿主的 plugin:// 代理会用 401 拒掉 iframe 里的 module 子资源请求，因此面板只加载
+// 一个内联样式的 HTML 加一个经典脚本；脚本由三个模块去掉 import/export 后拼成。
+let panelCache = null;
+
+function stripModuleSyntax(source) {
+  return source
+    .replace(/^import\s*\{[\s\S]*?\}\s*from\s*'\.\/[^']+';?\s*$/gm, '')
+    .replace(/^import[^\n]*from\s*'\.\/[^']+';?\s*$/gm, '')
+    .replace(/^export\s+(?=(?:async\s+)?function|const|let|var|class)/gm, '');
+}
+
+async function panel() {
+  if (panelCache) return panelCache;
+  const parts = [];
+  for (const file of ['palette.mjs', 'panel-tools.mjs', 'app.js']) {
+    parts.push('// ---- ' + file + ' ----', stripModuleSyntax(await readFile(join(here, file), 'utf8')));
+  }
+  const bundle = '(function () {\n' + parts.join('\n') + '\n})();\n';
+  const css = await readFile(join(here, 'styles.css'), 'utf8');
+  const page = await readFile(join(here, 'index.html'), 'utf8');
+  const styled = page.replace('<link rel="stylesheet" href="/styles.css">',
+    () => '<style>\n' + css + '\n</style>');
+  const html = styled.replace('<script type="module" src="/app.js"></script>',
+    () => '<script src="/bundle.js"></script>');
+  if (styled === page || html === styled) throw new Error('index.html 缺少样式或脚本占位，面板无法打包。');
+  panelCache = { bundle, html };
+  return panelCache;
+}
+
+app.page('/', async () => new Response((await panel()).html, {
+  contentType: 'text/html; charset=utf-8',
+  headers: assetHeaders,
+}));
+
+app.page('/bundle.js', async () => new Response((await panel()).bundle, {
+  contentType: 'application/javascript; charset=utf-8',
+  headers: assetHeaders,
+}));
 
 function route(path, handler) {
   app.api('/api/' + path, async (body) => {
